@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Guide the Mute Swan Home to Denmark 🇩🇰</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome for UI icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Canvas Confetti Library -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <style>
+    /* Prevent scrolling and pinch-zoom behavior on touch devices for crisp controls */
+    html, body {
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    /* Danish Flag Red theme gradient background */
+    .bg-danish {
+      background: linear-gradient(135deg, #c8102e 0%, #8b0000 100%);
+    }
+
+    /* Custom glassmorphism card style */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Directional controller buttons touch response */
+    .d-btn {
+      touch-action: manipulation;
+      transition: all 0.1s ease;
+      background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
+    }
+    .d-btn:active {
+      transform: scale(0.92);
+      background: #e5e7eb;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    /* Smooth transition for game canvas wrapper */
+    #canvas-container {
+      position: relative;
+      width: 100%;
+      max-width: 450px;
+      aspect-ratio: 1 / 1;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 1rem;
+    }
+  </style>
+</head>
+<body class="bg-danish h-screen w-screen flex flex-col justify-between items-center p-3 sm:p-4 text-slate-800">
+
+  <!-- Header / Top Bar -->
+  <header class="w-full max-w-md flex justify-between items-center pt-1 pb-2 px-2 text-white">
+    <div class="flex items-center space-x-2">
+      <span class="text-2xl">🦢</span>
+      <h1 class="font-bold text-lg sm:text-xl tracking-tight">Swan to Dannebrog</h1>
+    </div>
+    <button id="reset-btn" class="bg-white/20 hover:bg-white/30 text-white font-medium py-1.5 px-3 rounded-full text-xs sm:text-sm backdrop-blur-md border border-white/30 flex items-center gap-1.5 active:scale-95 transition-all">
+      <i class="fa-solid fa-arrows-rotate"></i> Reset
+    </button>
+  </header>
+
+  <!-- Main Game Screen Area -->
+  <main class="w-full max-w-md flex-1 flex flex-col items-center justify-center my-auto relative">
+    
+    <!-- Info banner -->
+    <div class="glass-card w-full mb-3 p-2.5 rounded-xl text-center shadow-md border border-red-100 flex items-center justify-around text-xs sm:text-sm font-semibold text-red-900">
+      <span>Guided Moves: <strong id="move-count" class="text-red-600 font-bold text-base">0</strong></span>
+      <span class="text-slate-300">|</span>
+      <span>Target: 🇩🇰 Dannebrog</span>
+    </div>
+
+    <!-- Maze Canvas Container -->
+    <div id="canvas-container" class="glass-card rounded-2xl p-2 shadow-2xl border-2 border-white/60">
+      <canvas id="mazeCanvas"></canvas>
+
+      <!-- Victory Overlay Modal -->
+      <div id="victory-modal" class="hidden absolute inset-0 bg-red-900/90 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center text-white z-20 animate-fade-in">
+        <div class="text-6xl mb-3 animate-bounce">🇩🇰🦢🇩🇰</div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold mb-2 text-yellow-300">Tillykke!</h2>
+        <p class="text-sm sm:text-base font-medium mb-1">You guided the Mute Swan home!</p>
+        <p class="text-xs text-red-200 mb-6" id="victory-stats">Completed in 0 moves!</p>
+        
+        <button id="play-again-btn" class="bg-white text-red-600 font-bold py-3 px-8 rounded-full text-base shadow-lg hover:bg-yellow-300 hover:text-red-800 transition-all active:scale-95 flex items-center gap-2">
+          <i class="fa-solid fa-play"></i> Play Again
+        </button>
+      </div>
+    </div>
+
+    <!-- Touch / Desktop Controls Hint -->
+    <p class="text-xs text-white/80 mt-2 font-medium hidden sm:block">
+      <i class="fa-solid fa-keyboard mr-1"></i> Use Arrow Keys or WASD to navigate
+    </p>
+  </main>
+
+  <!-- On-Screen D-Pad Controls for Mobile Users -->
+  <footer class="w-full max-w-xs mb-2 mt-auto">
+    <div class="grid grid-cols-3 gap-2 w-36 sm:w-44 mx-auto">
+      <div></div>
+      <button id="btn-up" class="d-btn h-11 sm:h-13 rounded-xl flex items-center justify-center shadow-md text-red-700 text-xl border border-red-200" aria-label="Up">
+        <i class="fa-solid fa-chevron-up"></i>
+      </button>
+      <div></div>
+
+      <button id="btn-left" class="d-btn h-11 sm:h-13 rounded-xl flex items-center justify-center shadow-md text-red-700 text-xl border border-red-200" aria-label="Left">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <div class="flex items-center justify-center">
+        <div class="w-3 h-3 rounded-full bg-red-500/20"></div>
+      </div>
+      <button id="btn-right" class="d-btn h-11 sm:h-13 rounded-xl flex items-center justify-center shadow-md text-red-700 text-xl border border-red-200" aria-label="Right">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+
+      <div></div>
+      <button id="btn-down" class="d-btn h-11 sm:h-13 rounded-xl flex items-center justify-center shadow-md text-red-700 text-xl border border-red-200" aria-label="Down">
+        <i class="fa-solid fa-chevron-down"></i>
+      </button>
+      <div></div>
+    </div>
+  </footer>
+
+  <!-- Game Logic Script -->
+  <script>
+    // --- Audio Synthesizer (Web Audio API) for sound effects ---
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+      }
+
+      playStep() {
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.05);
+          gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.05);
+        } catch(e) {}
+      }
+
+      playWin() {
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+            gain.gain.setValueAtTime(0.15, now + idx * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.3);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.12);
+            osc.stop(now + idx * 0.12 + 0.3);
+          });
+        } catch(e) {}
+      }
+    }
+
+    const soundFX = new SoundFX();
+
+    // --- Maze Generator & Game Logic ---
+    const GRID_SIZE = 11; // 11x11 grid (must be odd for perfect maze algorithm)
+    const canvas = document.getElementById('mazeCanvas');
+    const ctx = canvas.getContext('2d');
+    const moveCountEl = document.getElementById('move-count');
+    const victoryModal = document.getElementById('victory-modal');
+    const victoryStats = document.getElementById('victory-stats');
+
+    let grid = [];
+    let playerPos = { r: 0, c: 0 };
+    let goalPos = { r: GRID_SIZE - 1, c: GRID_SIZE - 1 };
+    let moves = 0;
+    let isGameWon = false;
+
+    // Cell bit flags for walls: [Top, Right, Bottom, Left]
+    // 0 = path, 1 = wall
+    function initGrid() {
+      grid = [];
+      for (let r = 0; r < GRID_SIZE; r++) {
+        let row = [];
+        for (let c = 0; c < GRID_SIZE; c++) {
+          row.push({
+            r, c,
+            visited: false,
+            walls: [true, true, true, true] // N, E, S, W
+          });
+        }
+        grid.push(row);
+      }
+    }
+
+    // Depth-First Search Maze Generation
+    function generateMaze() {
+      initGrid();
+      const stack = [];
+      const start = grid[0][0];
+      start.visited = true;
+      stack.push(start);
+
+      while (stack.length > 0) {
+        const current = stack[stack.length - 1];
+        const neighbors = getUnvisitedNeighbors(current);
+
+        if (neighbors.length > 0) {
+          // Pick random neighbor
+          const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+          
+          // Remove wall between current and next
+          removeWall(current, next);
+
+          next.visited = true;
+          stack.push(next);
+        } else {
+          stack.pop();
+        }
+      }
+    }
+
+    function getUnvisitedNeighbors(cell) {
+      const { r, c } = cell;
+      const neighbors = [];
+
+      if (r > 0 && !grid[r - 1][c].visited) neighbors.push(grid[r - 1][c]); // North
+      if (c < GRID_SIZE - 1 && !grid[r][c + 1].visited) neighbors.push(grid[r][c + 1]); // East
+      if (r < GRID_SIZE - 1 && !grid[r + 1][c].visited) neighbors.push(grid[r + 1][c]); // South
+      if (c > 0 && !grid[r][c - 1].visited) neighbors.push(grid[r][c - 1]); // West
+
+      return neighbors;
+    }
+
+    function removeWall(c1, c2) {
+      const dr = c2.r - c1.r;
+      const dc = c2.c - c1.c;
+
+      if (dr === -1) { c1.walls[0] = false; c2.walls[2] = false; } // c2 is North of c1
+      else if (dc === 1) { c1.walls[1] = false; c2.walls[3] = false; } // c2 is East of c1
+      else if (dr === 1) { c1.walls[2] = false; c2.walls[0] = false; } // c2 is South of c1
+      else if (dc === -1) { c1.walls[3] = false; c2.walls[1] = false; } // c2 is West of c1
+    }
+
+    // Resize canvas dynamically to match display dimensions cleanly
+    function resizeCanvas() {
+      const container = document.getElementById('canvas-container');
+      const size = container.clientWidth;
+      const dpr = window.devicePixelRatio || 1;
+      
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
+      ctx.scale(dpr, dpr);
+      
+      draw();
+    }
+
+    // Render Denmark's Flag (Dannebrog) on Goal Cell
+    function drawFlag(x, y, size) {
+      const pad = size * 0.15;
+      const fw = size - (pad * 2);
+      const fh = fw * 0.75;
+      const fx = x + pad;
+      const fy = y + pad + (size * 0.05);
+
+      // Flag Red background
+      ctx.fillStyle = "#C8102E";
+      ctx.beginPath();
+      ctx.roundRect(fx, fy, fw, fh, 3);
+      ctx.fill();
+
+      // White Cross (Danish Nordic Cross design)
+      ctx.fillStyle = "#FFFFFF";
+      const crossThick = fw * 0.18;
+      const crossX = fx + (fw * 0.32);
+      const crossY = fy + (fh * 0.42);
+
+      // Vertical line
+      ctx.fillRect(crossX, fy, crossThick, fh);
+      // Horizontal line
+      ctx.fillRect(fx, crossY, fw, crossThick);
+
+      // Flag pole
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(fx, fy - 2);
+      ctx.lineTo(fx, fy + fh + 4);
+      ctx.stroke();
+    }
+
+    // Main Canvas Render
+    function draw() {
+      const container = document.getElementById('canvas-container');
+      const displaySize = container.clientWidth;
+      const cellSize = displaySize / GRID_SIZE;
+
+      // Clear Canvas
+      ctx.clearRect(0, 0, displaySize, displaySize);
+
+      // Background floor color (soft Danish beige)
+      ctx.fillStyle = "#fdfbf7";
+      ctx.fillRect(0, 0, displaySize, displaySize);
+
+      // Draw Walls
+      ctx.strokeStyle = "#c8102e"; // Danish red walls
+      ctx.lineWidth = Math.max(3, cellSize * 0.1);
+      ctx.lineCap = "round";
+
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const cell = grid[r][c];
+          const x = c * cellSize;
+          const y = r * cellSize;
+
+          if (cell.walls[0]) { // Top
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cellSize, y); ctx.stroke();
+          }
+          if (cell.walls[1]) { // Right
+            ctx.beginPath(); ctx.moveTo(x + cellSize, y); ctx.lineTo(x + cellSize, y + cellSize); ctx.stroke();
+          }
+          if (cell.walls[2]) { // Bottom
+            ctx.beginPath(); ctx.moveTo(x, y + cellSize); ctx.lineTo(x + cellSize, y + cellSize); ctx.stroke();
+          }
+          if (cell.walls[3]) { // Left
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); ctx.stroke();
+          }
+        }
+      }
+
+      // Draw Goal (Dannebrog Flag)
+      const goalX = goalPos.c * cellSize;
+      const goalY = goalPos.r * cellSize;
+      drawFlag(goalX, goalY, cellSize);
+
+      // Draw Player (Mute Swan Emoji or Vector Graphic)
+      const playerX = playerPos.c * cellSize;
+      const playerY = playerPos.r * cellSize;
+
+      ctx.font = `${cellSize * 0.65}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("🦢", playerX + (cellSize / 2), playerY + (cellSize / 2) + 2);
+    }
+
+    // Handle Player Movement
+    function movePlayer(dir) {
+      if (isGameWon) return;
+
+      soundFX.init(); // Initialize audio context on first user interaction
+
+      const current = grid[playerPos.r][playerPos.c];
+      let moved = false;
+
+      if (dir === 'up' && !current.walls[0]) {
+        playerPos.r--;
+        moved = true;
+      } else if (dir === 'right' && !current.walls[1]) {
+        playerPos.c++;
+        moved = true;
+      } else if (dir === 'down' && !current.walls[2]) {
+        playerPos.r++;
+        moved = true;
+      } else if (dir === 'left' && !current.walls[3]) {
+        playerPos.c--;
+        moved = true;
+      }
+
+      if (moved) {
+        moves++;
+        moveCountEl.innerText = moves;
+        soundFX.playStep();
+        draw();
+        checkVictory();
+      }
+    }
+
+    // Check Victory Condition
+    function checkVictory() {
+      if (playerPos.r === goalPos.r && playerPos.c === goalPos.c) {
+        isGameWon = true;
+        soundFX.playWin();
+
+        // Trigger celebratory confetti
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#c8102e', '#ffffff', '#ffd700']
+          });
+        }
+
+        // Show Modal
+        victoryStats.innerText = `You brought Denmark's national bird home in ${moves} moves!`;
+        victoryModal.classList.remove('hidden');
+      }
+    }
+
+    // Restart Game
+    function resetGame() {
+      playerPos = { r: 0, c: 0 };
+      moves = 0;
+      isGameWon = false;
+      moveCountEl.innerText = "0";
+      victoryModal.classList.add('hidden');
+      generateMaze();
+      draw();
+    }
+
+    // --- Input Handling (Keyboard, Touch Swipe & Buttons) ---
+
+    // Keyboard
+    window.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowUp': case 'w': case 'W':
+          movePlayer('up'); e.preventDefault(); break;
+        case 'ArrowDown': case 's': case 'S':
+          movePlayer('down'); e.preventDefault(); break;
+        case 'ArrowLeft': case 'a': case 'A':
+          movePlayer('left'); e.preventDefault(); break;
+        case 'ArrowRight': case 'd': case 'D':
+          movePlayer('right'); e.preventDefault(); break;
+      }
+    });
+
+    // Touch Controls (On-Screen Buttons)
+    document.getElementById('btn-up').addEventListener('click', () => movePlayer('up'));
+    document.getElementById('btn-down').addEventListener('click', () => movePlayer('down'));
+    document.getElementById('btn-left').addEventListener('click', () => movePlayer('left'));
+    document.getElementById('btn-right').addEventListener('click', () => movePlayer('right'));
+
+    document.getElementById('reset-btn').addEventListener('click', resetGame);
+    document.getElementById('play-again-btn').addEventListener('click', resetGame);
+
+    // Touch Swipe Gesture Handling on Canvas
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    canvas.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', (e) => {
+      const touchEndX = e.changedTouches[0].screenX;
+      const touchEndY = e.changedTouches[0].screenY;
+      handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+    }, { passive: true });
+
+    function handleSwipe(startX, startY, endX, endY) {
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const minThreshold = 20;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (Math.abs(dx) > minThreshold) {
+          if (dx > 0) movePlayer('right');
+          else movePlayer('left');
+        }
+      } else {
+        if (Math.abs(dy) > minThreshold) {
+          if (dy > 0) movePlayer('down');
+          else movePlayer('up');
+        }
+      }
+    }
+
+    // Handle Window Resize
+    window.addEventListener('resize', resizeCanvas);
+
+    // Initial Startup
+    window.onload = () => {
+      generateMaze();
+      resizeCanvas();
+    };
+  </script>
+</body>
+</html>
